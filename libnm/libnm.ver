@@ -1387,6 +1387,7 @@ global:
 	nm_connection_get_setting_wpan;
 	nm_connection_multi_connect_get_type;
 	nm_device_6lowpan_get_type;
+	nm_device_get_connectivity;
 	nm_device_wireguard_get_fwmark;
 	nm_device_wireguard_get_listen_port;
 	nm_device_wireguard_get_public_key;
