@@ -5990,7 +5990,7 @@ nm_manager_write_device_state (NMManager *self, NMDevice *device)
 	int ifindex;
 	gboolean managed;
 	NMConfigDeviceStateManagedType managed_type;
-	NMConnection *settings_connection;
+	NMConnection *settings_connection = NULL;
 	const char *uuid = NULL;
 	const char *perm_hw_addr_fake = NULL;
 	gboolean perm_hw_addr_is_fake;
@@ -6013,7 +6013,8 @@ nm_manager_write_device_state (NMManager *self, NMDevice *device)
 
 	managed = nm_device_get_managed (device, FALSE);
 	if (managed) {
-		settings_connection = NM_CONNECTION (nm_device_get_settings_connection (device));
+		if (nm_device_get_state (device) <= NM_DEVICE_STATE_ACTIVATED)
+			settings_connection = NM_CONNECTION (nm_device_get_settings_connection (device));
 		if (settings_connection)
 			uuid = nm_connection_get_uuid (settings_connection);
 		managed_type = NM_CONFIG_DEVICE_STATE_MANAGED_TYPE_MANAGED;
