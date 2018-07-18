@@ -2381,7 +2381,7 @@ concheck_periodic_timeout_cb (gpointer user_data)
 {
 	NMDevice *self = user_data;
 
-	_LOGt (LOGD_CONCHECK, "connectivity: periodic timeout");
+	_LOGT (LOGD_CONCHECK, "connectivity: periodic timeout");
 	concheck_periodic_schedule_set (self, CONCHECK_SCHEDULE_CHECK_PERIODIC);
 	return G_SOURCE_REMOVE;
 }
@@ -10198,7 +10198,7 @@ dad6_add_pending_address (NMDevice *self,
 	    && NM_FLAGS_HAS (pl_addr->n_ifa_flags, IFA_F_TENTATIVE)
 	    && !NM_FLAGS_HAS (pl_addr->n_ifa_flags, IFA_F_DADFAILED)
 	    && !NM_FLAGS_HAS (pl_addr->n_ifa_flags, IFA_F_OPTIMISTIC)) {
-		_LOGt (LOGD_DEVICE, "IPv6 DAD: pending address %s",
+		_LOGT (LOGD_DEVICE, "IPv6 DAD: pending address %s",
 		       nm_platform_ip6_address_to_string (pl_addr, NULL, 0));
 
 		if (!*dad6_config)
