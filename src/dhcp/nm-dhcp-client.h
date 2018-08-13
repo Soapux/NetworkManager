@@ -147,6 +147,8 @@ gboolean nm_dhcp_client_get_info_only (NMDhcpClient *self);
 
 gboolean nm_dhcp_client_get_use_fqdn (NMDhcpClient *self);
 
+const char *nm_dhcp_client_get_hostname (NMDhcpClient *self);
+
 gboolean nm_dhcp_client_start_ip4 (NMDhcpClient *self,
                                    GBytes *client_id,
                                    const char *dhcp_anycast_addr,
