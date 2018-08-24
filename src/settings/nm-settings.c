@@ -212,11 +212,13 @@ connection_ready_changed (NMSettingsConnection *conn,
 }
 
 static void
-plugin_connection_added (NMSettingsPlugin *config,
-                         NMSettingsConnection *connection,
-                         NMSettings *self)
+plugin_connection_changed (NMSettingsPlugin *config,
+                           const char *uuid,
+                           NMSettingsStorage *storage,
+                           NMConnection *connection)
 {
-	claim_connection (self, connection);
+	//XXX
+	//claim_connection (self, connection);
 }
 
 static void
@@ -227,26 +229,15 @@ load_connections (NMSettings *self)
 
 	for (iter = priv->plugins; iter; iter = g_slist_next (iter)) {
 		NMSettingsPlugin *plugin = NM_SETTINGS_PLUGIN (iter->data);
-		GSList *plugin_connections;
-		GSList *elt;
 
-		plugin_connections = nm_settings_plugin_get_connections (plugin);
-
-		// FIXME: ensure connections from plugins loaded with a lower priority
-		// get rejected when they conflict with connections from a higher
-		// priority plugin.
-
-		for (elt = plugin_connections; elt; elt = g_slist_next (elt))
-			claim_connection (self, elt->data);
-
-		g_slist_free (plugin_connections);
-
-		g_signal_connect (plugin, NM_SETTINGS_PLUGIN_CONNECTION_ADDED,
-		                  G_CALLBACK (plugin_connection_added), self);
+		g_signal_connect (plugin, NM_SETTINGS_PLUGIN_CONNECTION_CHANGED,
+		                  G_CALLBACK (plugin_connection_changed), self);
 		g_signal_connect (plugin, NM_SETTINGS_PLUGIN_UNMANAGED_SPECS_CHANGED,
 		                  G_CALLBACK (unmanaged_specs_changed), self);
 		g_signal_connect (plugin, NM_SETTINGS_PLUGIN_UNRECOGNIZED_SPECS_CHANGED,
 		                  G_CALLBACK (unrecognized_specs_changed), self);
+
+		nm_settings_plugin_reload_connections (plugin);
 	}
 
 	priv->connections_loaded = TRUE;
@@ -688,10 +679,7 @@ add_plugin_load_file (NMSettings *self, const char *pname, GError **error)
 static void
 add_plugin_keyfile (NMSettings *self)
 {
-	gs_unref_object NMSKeyfilePlugin *keyfile_plugin = NULL;
-
-	keyfile_plugin = nms_keyfile_plugin_new ();
-	add_plugin (self, NM_SETTINGS_PLUGIN (keyfile_plugin), NULL);
+	add_plugin (self, NM_SETTINGS_PLUGIN (nms_keyfile_plugin_get ()), NULL);
 }
 
 static gboolean
@@ -1789,6 +1777,7 @@ nm_settings_start (NMSettings *self, GError **error)
 		return FALSE;
 
 	load_connections (self);
+
 	check_startup_complete (self);
 
 	priv->hostname_manager = g_object_ref (nm_hostname_manager_get ());

@@ -46,13 +46,15 @@
 /*****************************************************************************/
 
 typedef struct {
-	GHashTable *connections;  /* uuid::connection */
 
-	gboolean initialized;
-	GFileMonitor *monitor;
-	gulong monitor_id;
+	/* uuid::nms-keyfile-storage */
+	GHashTable *storages;
 
 	NMConfig *config;
+	GFileMonitor *monitor;
+
+	gulong monitor_id;
+	bool initialized;
 } NMSKeyfilePluginPrivate;
 
 struct _NMSKeyfilePlugin {
@@ -70,6 +72,10 @@ G_DEFINE_TYPE (NMSKeyfilePlugin, nms_keyfile_plugin, NM_TYPE_SETTINGS_PLUGIN)
 
 /*****************************************************************************/
 
+NM_DEFINE_SINGLETON_GETTER (NMSKeyfilePlugin, nms_keyfile_plugin_get, NMS_TYPE_KEYFILE_PLUGIN);
+
+/*****************************************************************************/
+
 #define _NMLOG_PREFIX_NAME      "keyfile"
 #define _NMLOG_DOMAIN           LOGD_SETTINGS
 #define _NMLOG(level, ...) \
@@ -80,10 +86,11 @@ G_DEFINE_TYPE (NMSKeyfilePlugin, nms_keyfile_plugin, NM_TYPE_SETTINGS_PLUGIN)
 
 /*****************************************************************************/
 
+#if 0
 static void
 connection_removed_cb (NMSettingsConnection *sett_conn, NMSKeyfilePlugin *self)
 {
-	g_hash_table_remove (NMS_KEYFILE_PLUGIN_GET_PRIVATE (self)->connections,
+	g_hash_table_remove (NMS_KEYFILE_PLUGIN_GET_PRIVATE (self)->storages,
 	                     nm_settings_connection_get_uuid (sett_conn));
 }
 
@@ -101,7 +108,7 @@ remove_connection (NMSKeyfilePlugin *self, NMSKeyfileConnection *connection)
 	/* Removing from the hash table should drop the last reference */
 	g_object_ref (connection);
 	g_signal_handlers_disconnect_by_func (connection, connection_removed_cb, self);
-	removed = g_hash_table_remove (NMS_KEYFILE_PLUGIN_GET_PRIVATE (self)->connections,
+	removed = g_hash_table_remove (NMS_KEYFILE_PLUGIN_GET_PRIVATE (self)->storages,
 	                               nm_settings_connection_get_uuid (NM_SETTINGS_CONNECTION (connection)));
 	nm_settings_connection_signal_remove (NM_SETTINGS_CONNECTION (connection));
 	g_object_unref (connection);
@@ -118,7 +125,7 @@ find_by_path (NMSKeyfilePlugin *self, const char *path)
 
 	g_return_val_if_fail (path != NULL, NULL);
 
-	g_hash_table_iter_init (&iter, priv->connections);
+	g_hash_table_iter_init (&iter, priv->storages);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer) &candidate)) {
 		if (g_strcmp0 (path, nm_settings_connection_get_filename (candidate)) == 0)
 			return NMS_KEYFILE_CONNECTION (candidate);
@@ -194,7 +201,7 @@ update_connection (NMSKeyfilePlugin *self,
 	}
 
 	uuid = nm_settings_connection_get_uuid (NM_SETTINGS_CONNECTION (connection_new));
-	connection_by_uuid = g_hash_table_lookup (priv->connections, uuid);
+	connection_by_uuid = g_hash_table_lookup (priv->storages, uuid);
 
 	if (   connection
 	    && connection != connection_by_uuid) {
@@ -274,7 +281,7 @@ update_connection (NMSKeyfilePlugin *self,
 			_LOGI ("add connection "NMS_KEYFILE_CONNECTION_LOG_FMT, NMS_KEYFILE_CONNECTION_LOG_ARG (connection_new));
 		else
 			_LOGI ("new connection "NMS_KEYFILE_CONNECTION_LOG_FMT, NMS_KEYFILE_CONNECTION_LOG_ARG (connection_new));
-		g_hash_table_insert (priv->connections, g_strdup (uuid), connection_new);
+		g_hash_table_insert (priv->storages, g_strdup (uuid), connection_new);
 
 		g_signal_connect (connection_new, NM_SETTINGS_CONNECTION_REMOVED,
 		                  G_CALLBACK (connection_removed_cb),
@@ -331,6 +338,7 @@ dir_changed (GFileMonitor *monitor,
 
 	g_free (full_path);
 }
+#endif
 
 static void
 config_changed_cb (NMConfig *config,
@@ -349,6 +357,7 @@ config_changed_cb (NMConfig *config,
 		_nm_settings_plugin_emit_signal_unmanaged_specs_changed (NM_SETTINGS_PLUGIN (self));
 }
 
+#if 0
 static void
 setup_monitoring (NMSettingsPlugin *config)
 {
@@ -451,7 +460,7 @@ read_connections (NMSettingsPlugin *config)
 	 * To have sensible, reproducible behavior, sort the paths by last modification
 	 * time prefering older files.
 	 */
-	paths = _paths_from_connections (priv->connections);
+	paths = _paths_from_connections (priv->storages);
 	g_ptr_array_sort_with_data (filenames, (GCompareDataFunc) _sort_paths, paths);
 	g_hash_table_destroy (paths);
 
@@ -462,7 +471,7 @@ read_connections (NMSettingsPlugin *config)
 	}
 	g_ptr_array_free (filenames, TRUE);
 
-	g_hash_table_iter_init (&iter, priv->connections);
+	g_hash_table_iter_init (&iter, priv->storages);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer *) &connection)) {
 		if (   !g_hash_table_contains (alive_connections, connection)
 		    && nm_settings_connection_get_filename (NM_SETTINGS_CONNECTION (connection))) {
@@ -492,7 +501,7 @@ get_connections (NMSettingsPlugin *config)
 		read_connections (config);
 		priv->initialized = TRUE;
 	}
-	return _nm_utils_hash_values_to_slist (priv->connections);
+	return _nm_utils_hash_values_to_slist (priv->storages);
 }
 
 static gboolean
@@ -544,6 +553,7 @@ add_connection (NMSettingsPlugin *config,
 	}
 	return NM_SETTINGS_CONNECTION (update_connection (self, reread ?: connection, path, NULL, FALSE, NULL, error));
 }
+#endif
 
 static GSList *
 get_unmanaged_specs (NMSettingsPlugin *config)
@@ -566,7 +576,7 @@ nms_keyfile_plugin_init (NMSKeyfilePlugin *plugin)
 	NMSKeyfilePluginPrivate *priv = NMS_KEYFILE_PLUGIN_GET_PRIVATE (plugin);
 
 	priv->config = g_object_ref (nm_config_get ());
-	priv->connections = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_object_unref);
+	priv->storages = g_hash_table_new_full (nm_str_hash, g_str_equal, g_free, g_object_unref);
 }
 
 static void
@@ -583,12 +593,6 @@ constructed (GObject *object)
 		_LOGW ("'hostname' option is deprecated and has no effect");
 }
 
-NMSKeyfilePlugin *
-nms_keyfile_plugin_new (void)
-{
-	return g_object_new (NMS_TYPE_KEYFILE_PLUGIN, NULL);
-}
-
 static void
 dispose (GObject *object)
 {
@@ -601,9 +605,9 @@ dispose (GObject *object)
 		g_clear_object (&priv->monitor);
 	}
 
-	if (priv->connections) {
-		g_hash_table_destroy (priv->connections);
-		priv->connections = NULL;
+	if (priv->storages) {
+		g_hash_table_destroy (priv->storages);
+		priv->storages = NULL;
 	}
 
 	if (priv->config) {
@@ -623,9 +627,11 @@ nms_keyfile_plugin_class_init (NMSKeyfilePluginClass *klass)
 	object_class->constructed = constructed;
 	object_class->dispose     = dispose;
 
+#if 0
 	plugin_class->get_connections     = get_connections;
 	plugin_class->load_connection     = load_connection;
 	plugin_class->reload_connections  = reload_connections;
 	plugin_class->add_connection      = add_connection;
+#endif
 	plugin_class->get_unmanaged_specs = get_unmanaged_specs;
 }

@@ -16,28 +16,26 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Copyright (C) 2008 Novell, Inc.
- * Copyright (C) 2008 - 2012 Red Hat, Inc.
+ * Copyright (C) 2008 - 2018 Red Hat, Inc.
  */
 
-#ifndef __NMS_KEYFILE_CONNECTION_H__
-#define __NMS_KEYFILE_CONNECTION_H__
+#ifndef __NMS_KEYFILE_STORAGE_H__
+#define __NMS_KEYFILE_STORAGE_H__
 
-#include "settings/nm-settings-connection.h"
+#include "settings/nm-settings-storage.h"
 
-#define NMS_TYPE_KEYFILE_CONNECTION            (nms_keyfile_connection_get_type ())
-#define NMS_KEYFILE_CONNECTION(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NMS_TYPE_KEYFILE_CONNECTION, NMSKeyfileConnection))
-#define NMS_KEYFILE_CONNECTION_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), NMS_TYPE_KEYFILE_CONNECTION, NMSKeyfileConnectionClass))
-#define NMS_IS_KEYFILE_CONNECTION(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NMS_TYPE_KEYFILE_CONNECTION))
-#define NMS_IS_KEYFILE_CONNECTION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), NMS_TYPE_KEYFILE_CONNECTION))
-#define NMS_KEYFILE_CONNECTION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NMS_TYPE_KEYFILE_CONNECTION, NMSKeyfileConnectionClass))
+#define NMS_TYPE_KEYFILE_STORAGE            (nms_keyfile_storage_get_type ())
+#define NMS_KEYFILE_STORAGE(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NMS_TYPE_KEYFILE_STORAGE, NMSKeyfileStorage))
+#define NMS_KEYFILE_STORAGE_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), NMS_TYPE_KEYFILE_STORAGE, NMSKeyfileStorageClass))
+#define NMS_IS_KEYFILE_STORAGE(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), NMS_TYPE_KEYFILE_STORAGE))
+#define NMS_IS_KEYFILE_STORAGE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), NMS_TYPE_KEYFILE_STORAGE))
+#define NMS_KEYFILE_STORAGE_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), NMS_TYPE_KEYFILE_STORAGE, NMSKeyfileStorageClass))
 
-typedef struct _NMSKeyfileConnection NMSKeyfileConnection;
-typedef struct _NMSKeyfileConnectionClass NMSKeyfileConnectionClass;
+typedef struct _NMSKeyfileStorage NMSKeyfileStorage;
+typedef struct _NMSKeyfileStorageClass NMSKeyfileStorageClass;
 
-GType nms_keyfile_connection_get_type (void);
+GType nms_keyfile_storage_get_type (void);
 
-NMSKeyfileConnection *nms_keyfile_connection_new (NMConnection *source,
-                                                  const char *filename,
-                                                  GError **error);
+NMSKeyfileStorage *nms_keyfile_storage_new (const char *filename);
 
-#endif /* __NMS_KEYFILE_CONNECTION_H__ */
+#endif /* __NMS_KEYFILE_STORAGE_H__ */

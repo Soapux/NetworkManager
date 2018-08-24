@@ -1728,6 +1728,8 @@ src_libNetworkManager_la_SOURCES = \
 	src/settings/nm-secret-agent.h \
 	src/settings/nm-settings-connection.c \
 	src/settings/nm-settings-connection.h \
+	src/settings/nm-settings-storage.c \
+	src/settings/nm-settings-storage.h \
 	src/settings/nm-settings-plugin.c \
 	src/settings/nm-settings-plugin.h \
 	src/settings/nm-settings.c \

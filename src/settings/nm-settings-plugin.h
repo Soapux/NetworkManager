@@ -24,6 +24,8 @@
 
 #include "nm-connection.h"
 
+#include "nm-settings-storage.h"
+
 #define NM_TYPE_SETTINGS_PLUGIN               (nm_settings_plugin_get_type ())
 #define NM_SETTINGS_PLUGIN(obj)               (G_TYPE_CHECK_INSTANCE_CAST ((obj), NM_TYPE_SETTINGS_PLUGIN, NMSettingsPlugin))
 #define NM_SETTINGS_PLUGIN_CLASS(klass)       (G_TYPE_CHECK_CLASS_CAST ((klass), NM_TYPE_SETTINGS_PLUGIN, NMSettingsPluginClass))
@@ -33,9 +35,9 @@
 
 #define NM_SETTINGS_PLUGIN_UNMANAGED_SPECS_CHANGED    "unmanaged-specs-changed"
 #define NM_SETTINGS_PLUGIN_UNRECOGNIZED_SPECS_CHANGED "unrecognized-specs-changed"
-#define NM_SETTINGS_PLUGIN_CONNECTION_ADDED           "connection-added"
+#define NM_SETTINGS_PLUGIN_CONNECTION_CHANGED         "connection-changed"
 
-typedef struct {
+typedef struct _NMSettingsPlugin {
 	GObject parent;
 } NMSettingsPlugin;
 
@@ -44,12 +46,6 @@ typedef struct {
 
 	/* Called when the plugin is loaded to initialize it */
 	void (*initialize) (NMSettingsPlugin *plugin);
-
-	/* Returns a GSList of NMSettingsConnection objects that represent
-	 * connections the plugin knows about.  The returned list is freed by the
-	 * system settings service.
-	 */
-	GSList * (*get_connections) (NMSettingsPlugin *plugin);
 
 	/* Requests that the plugin load/reload a single connection, if it
 	 * recognizes the filename. Returns success or failure.
@@ -107,8 +103,6 @@ NMSettingsPlugin *nm_settings_plugin_factory (void);
 
 void nm_settings_plugin_initialize (NMSettingsPlugin *config);
 
-GSList *nm_settings_plugin_get_connections (NMSettingsPlugin *plugin);
-
 gboolean nm_settings_plugin_load_connection (NMSettingsPlugin *plugin,
                                              const char *filename);
 void nm_settings_plugin_reload_connections (NMSettingsPlugin *plugin);
@@ -123,8 +117,10 @@ NMSettingsConnection *nm_settings_plugin_add_connection (NMSettingsPlugin *plugi
 
 /* internal API */
 
-void _nm_settings_plugin_emit_signal_connection_added (NMSettingsPlugin *plugin,
-                                                       NMSettingsConnection *sett_conn);
+void _nm_settings_plugin_emit_signal_connection_changed (NMSettingsPlugin *self,
+                                                         const char *uuid,
+                                                         NMSettingsStorage *storage,
+                                                         NMConnection *connection);
 
 void _nm_settings_plugin_emit_signal_unmanaged_specs_changed (NMSettingsPlugin *plugin);
 

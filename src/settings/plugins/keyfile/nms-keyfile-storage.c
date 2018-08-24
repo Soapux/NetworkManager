@@ -23,76 +23,104 @@
 
 #include "nms-keyfile-storage.h"
 
-#include <string.h>
-#include <glib/gstdio.h>
-
-#include "nm-dbus-interface.h"
-#include "nm-setting-connection.h"
-#include "nm-utils.h"
-
-#include "settings/nm-settings-plugin.h"
-
 #include "nms-keyfile-reader.h"
 #include "nms-keyfile-writer.h"
 #include "nms-keyfile-utils.h"
 
 /*****************************************************************************/
 
-struct _NMSKeyfileConnection {
-	NMSettingsConnection parent;
+typedef struct {
+	char *filename;
+} NMSKeyfileStoragePrivate;
+
+struct _NMSKeyfileStorage {
+	NMSettingsStorage parent;
+	NMSKeyfileStoragePrivate _priv;
+	struct {
+		bool dirty:1;
+	} _intern;
 };
 
-struct _NMSKeyfileConnectionClass {
-	NMSettingsConnectionClass parent;
+struct _NMSKeyfileStorageClass {
+	NMSettingsStorageClass parent;
 };
 
-G_DEFINE_TYPE (NMSKeyfileConnection, nms_keyfile_connection, NM_TYPE_SETTINGS_CONNECTION)
+G_DEFINE_TYPE (NMSKeyfileStorage, nms_keyfile_storage, NM_TYPE_SETTINGS_STORAGE)
+
+#define NMS_KEYFILE_STORAGE_GET_PRIVATE(self) _NM_GET_PRIVATE (self, NMSKeyfileStorage, NMS_IS_KEYFILE_STORAGE)
 
 /*****************************************************************************/
 
+static NMConnection *
+load_connection (NMSettingsStorage *storage,
+                 GError **error)
+{
+	NMSKeyfileStorage *self = NMS_KEYFILE_STORAGE (storage);
+	NMSKeyfileStoragePrivate *priv = NMS_KEYFILE_STORAGE_GET_PRIVATE (self);
+	NMConnection *connection;
+
+	connection = nms_keyfile_reader_from_file (priv->filename, error);
+	if (!connection)
+		return NULL;
+
+	nm_assert (nm_connection_verify (connection, NULL));
+	nm_assert (nm_connection_get_uuid (connection));
+
+	return connection;
+}
+
 static gboolean
-commit_changes (NMSettingsConnection *connection,
-                NMConnection *new_connection,
-                NMSettingsConnectionCommitReason commit_reason,
+commit_changes (NMSettingsStorage *storage,
+                NMConnection *connection,
+                NMSettingsStorageCommitReason commit_reason,
                 NMConnection **out_reread_connection,
                 char **out_logmsg_change,
                 GError **error)
 {
-	gs_free char *path = NULL;
+	NMSKeyfileStorage *self = NMS_KEYFILE_STORAGE (storage);
+	NMSKeyfileStoragePrivate *priv = NMS_KEYFILE_STORAGE_GET_PRIVATE (self);
+	gs_free char *filename = NULL;
 	gs_unref_object NMConnection *reread = NULL;
 	gboolean reread_same = FALSE;
 
 	nm_assert (out_reread_connection && !*out_reread_connection);
 	nm_assert (!out_logmsg_change || !*out_logmsg_change);
 
-	if (!nms_keyfile_writer_connection (new_connection,
-	                                    nm_settings_connection_get_filename (connection),
-	                                    NM_FLAGS_ALL (commit_reason,   NM_SETTINGS_CONNECTION_COMMIT_REASON_USER_ACTION
-	                                                                 | NM_SETTINGS_CONNECTION_COMMIT_REASON_ID_CHANGED),
-	                                    &path,
+	if (!nms_keyfile_writer_connection (connection,
+	                                    priv->filename,
+	                                    NM_FLAGS_ALL (commit_reason,   NM_SETTINGS_STORAGE_COMMIT_REASON_USER_ACTION
+	                                                                 | NM_SETTINGS_STORAGE_COMMIT_REASON_ID_CHANGED),
+	                                    &filename,
 	                                    &reread,
 	                                    &reread_same,
 	                                    error))
 		return FALSE;
 
-	if (!nm_streq0 (path, nm_settings_connection_get_filename (connection))) {
-		gs_free char *old_path = g_strdup (nm_settings_connection_get_filename (connection));
+	if (!nm_streq0 (filename, priv->filename)) {
+		gs_free char *old_filename = g_steal_pointer (&priv->filename);
 
-		nm_settings_connection_set_filename (connection, path);
-		if (old_path) {
+		priv->filename = g_steal_pointer (&filename);
+
+		if (old_filename) {
 			NM_SET_OUT (out_logmsg_change,
-			            g_strdup_printf ("keyfile: update "NMS_KEYFILE_CONNECTION_LOG_FMT" and rename from \"%s\"",
-			                             NMS_KEYFILE_CONNECTION_LOG_ARG (connection),
-			                             old_path));
+			            g_strdup_printf ("keyfile: update \"%s\" (\"%s\", %s) and rename from \"%s\"",
+			                             priv->filename,
+			                             nm_connection_get_id (connection),
+			                             nm_connection_get_uuid (connection),
+			                             old_filename));
 		} else {
 			NM_SET_OUT (out_logmsg_change,
-			            g_strdup_printf ("keyfile: update "NMS_KEYFILE_CONNECTION_LOG_FMT" and persist connection",
-			                             NMS_KEYFILE_CONNECTION_LOG_ARG (connection)));
+			            g_strdup_printf ("keyfile: update \"%s\" (\"%s\", %s) and persist connection",
+			                             priv->filename,
+			                             nm_connection_get_id (connection),
+			                             nm_connection_get_uuid (connection)));
 		}
 	} else {
 		NM_SET_OUT (out_logmsg_change,
-		            g_strdup_printf ("keyfile: update "NMS_KEYFILE_CONNECTION_LOG_FMT,
-		                             NMS_KEYFILE_CONNECTION_LOG_ARG (connection)));
+		            g_strdup_printf ("keyfile: update \"%s\" (\"%s\", %s)",
+		                             priv->filename,
+		                             nm_connection_get_id (connection),
+		                             nm_connection_get_uuid (connection)));
 	}
 
 	if (reread && !reread_same)
@@ -102,82 +130,60 @@ commit_changes (NMSettingsConnection *connection,
 }
 
 static gboolean
-delete (NMSettingsConnection *connection,
+delete (NMSettingsStorage *storage,
         GError **error)
 {
-	const char *path;
+	NMSKeyfileStorage *self = NMS_KEYFILE_STORAGE (storage);
+	NMSKeyfileStoragePrivate *priv = NMS_KEYFILE_STORAGE_GET_PRIVATE (self);
 
-	path = nm_settings_connection_get_filename (connection);
-	if (path)
-		g_unlink (path);
+	if (priv->filename)
+		(void) unlink (priv->filename);
 	return TRUE;
 }
 
 /*****************************************************************************/
 
 static void
-nms_keyfile_connection_init (NMSKeyfileConnection *connection)
+nms_keyfile_storage_init (NMSKeyfileStorage *self)
 {
 }
 
-NMSKeyfileConnection *
-nms_keyfile_connection_new (NMConnection *source,
-                            const char *full_path,
-                            GError **error)
+NMSKeyfileStorage *
+nms_keyfile_storage_new (const char *filename)
 {
-	GObject *object;
-	NMConnection *tmp;
-	const char *uuid;
-	gboolean update_unsaved = TRUE;
+	NMSKeyfileStorage *self;
+	NMSKeyfileStoragePrivate *priv;
 
-	g_assert (source || full_path);
+	g_return_val_if_fail (!filename || filename[0] == '/', NULL);
 
-	/* If we're given a connection already, prefer that instead of re-reading */
-	if (source)
-		tmp = g_object_ref (source);
-	else {
-		tmp = nms_keyfile_reader_from_file (full_path, error);
-		if (!tmp)
-			return NULL;
+	self = g_object_new (NMS_TYPE_KEYFILE_STORAGE, NULL);
 
-		uuid = nm_connection_get_uuid (tmp);
-		if (!uuid) {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Connection in file %s had no UUID", full_path);
-			g_object_unref (tmp);
-			return NULL;
-		}
+	priv = NMS_KEYFILE_STORAGE_GET_PRIVATE (self);
 
-		/* If we just read the connection from disk, it's clearly not Unsaved */
-		update_unsaved = FALSE;
-	}
-
-	object = g_object_new (NMS_TYPE_KEYFILE_CONNECTION,
-	                       NM_SETTINGS_CONNECTION_FILENAME, full_path,
-	                       NULL);
-
-	/* Update our settings with what was read from the file */
-	if (!nm_settings_connection_update (NM_SETTINGS_CONNECTION (object),
-	                                    tmp,
-	                                    update_unsaved
-	                                      ? NM_SETTINGS_CONNECTION_PERSIST_MODE_UNSAVED
-	                                      : NM_SETTINGS_CONNECTION_PERSIST_MODE_KEEP_SAVED,
-	                                    NM_SETTINGS_CONNECTION_COMMIT_REASON_NONE,
-	                                    NULL,
-	                                    error)) {
-		g_object_unref (object);
-		object = NULL;
-	}
-
-	g_object_unref (tmp);
-	return (NMSKeyfileConnection *) object;
+	priv->filename = g_strdup (filename);
+	return self;
 }
 
 static void
-nms_keyfile_connection_class_init (NMSKeyfileConnectionClass *keyfile_connection_class)
+finalize (GObject *object)
 {
-	NMSettingsConnectionClass *settings_class = NM_SETTINGS_CONNECTION_CLASS (keyfile_connection_class);
+	NMSKeyfileStorage *self = NMS_KEYFILE_STORAGE (object);
+	NMSKeyfileStoragePrivate *priv = NMS_KEYFILE_STORAGE_GET_PRIVATE (self);
 
-	settings_class->commit_changes = commit_changes;
-	settings_class->delete = delete;
+	g_free (priv->filename);
+
+	G_OBJECT_CLASS (nms_keyfile_storage_parent_class)->finalize (object);
+}
+
+static void
+nms_keyfile_storage_class_init (NMSKeyfileStorageClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	NMSettingsStorageClass *settings_class = NM_SETTINGS_STORAGE_CLASS (klass);
+
+	object_class->finalize = finalize;
+
+	settings_class->load_connection = load_connection;
+	settings_class->commit_changes  = commit_changes;
+	settings_class->delete          = delete;
 }
