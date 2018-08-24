@@ -1733,8 +1733,8 @@ src_libNetworkManager_la_SOURCES = \
 	src/settings/nm-settings.c \
 	src/settings/nm-settings.h \
 	\
-	src/settings/plugins/keyfile/nms-keyfile-connection.c \
-	src/settings/plugins/keyfile/nms-keyfile-connection.h \
+	src/settings/plugins/keyfile/nms-keyfile-storage.c \
+	src/settings/plugins/keyfile/nms-keyfile-storage.h \
 	src/settings/plugins/keyfile/nms-keyfile-plugin.c \
 	src/settings/plugins/keyfile/nms-keyfile-plugin.h \
 	src/settings/plugins/keyfile/nms-keyfile-reader.c \

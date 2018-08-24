@@ -39,7 +39,7 @@
 
 #include "settings/nm-settings-plugin.h"
 
-#include "nms-keyfile-connection.h"
+#include "nms-keyfile-storage.h"
 #include "nms-keyfile-writer.h"
 #include "nms-keyfile-utils.h"
 

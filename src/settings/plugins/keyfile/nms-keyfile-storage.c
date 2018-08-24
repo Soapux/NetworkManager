@@ -21,7 +21,7 @@
 
 #include "nm-default.h"
 
-#include "nms-keyfile-connection.h"
+#include "nms-keyfile-storage.h"
 
 #include <string.h>
 #include <glib/gstdio.h>
