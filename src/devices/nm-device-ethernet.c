@@ -1070,7 +1070,7 @@ dcb_configure (NMDevice *device)
 	 */
 	_LOGD (LOGD_DCB, "waiting for carrier (postconfig down)");
 	priv->dcb_wait = DCB_WAIT_CARRIER_POSTCONFIG_DOWN;
-	priv->dcb_timeout_id = g_timeout_add_seconds (3, dcb_carrier_timeout, device);
+	priv->dcb_timeout_id = g_timeout_add_seconds (10, dcb_carrier_timeout, device);
 	return TRUE;
 }
 
@@ -1098,7 +1098,7 @@ dcb_enable (NMDevice *device)
 	 */
 	_LOGD (LOGD_DCB, "waiting for carrier (preconfig down)");
 	priv->dcb_wait = DCB_WAIT_CARRIER_PRECONFIG_DOWN;
-	priv->dcb_timeout_id = g_timeout_add_seconds (3, dcb_carrier_timeout, device);
+	priv->dcb_timeout_id = g_timeout_add_seconds (10, dcb_carrier_timeout, device);
 	return TRUE;
 }
 
@@ -1134,7 +1134,7 @@ dcb_state (NMDevice *device, gboolean timeout)
 		if (!carrier) {
 			/* Wait for the carrier to come back up */
 			_LOGD (LOGD_DCB, "waiting for carrier (preconfig up)");
-			priv->dcb_timeout_id = g_timeout_add_seconds (5, dcb_carrier_timeout, device);
+			priv->dcb_timeout_id = g_timeout_add_seconds (10, dcb_carrier_timeout, device);
 			break;
 		}
 		_LOGD (LOGD_DCB, "dcb_state() preconfig down falling through");
@@ -1158,7 +1158,7 @@ dcb_state (NMDevice *device, gboolean timeout)
 		if (!carrier) {
 			/* Wait for the carrier to come back up */
 			_LOGD (LOGD_DCB, "waiting for carrier (postconfig up)");
-			priv->dcb_timeout_id = g_timeout_add_seconds (5, dcb_carrier_timeout, device);
+			priv->dcb_timeout_id = g_timeout_add_seconds (10, dcb_carrier_timeout, device);
 			break;
 		}
 		_LOGD (LOGD_DCB, "dcb_state() postconfig down falling through");
@@ -1266,7 +1266,7 @@ act_stage2_config (NMDevice *device, NMDeviceStateReason *out_failure_reason)
 		} else {
 			_LOGD (LOGD_DCB, "waiting for carrier (preenable up)");
 			priv->dcb_wait = DCB_WAIT_CARRIER_PREENABLE_UP;
-			priv->dcb_timeout_id = g_timeout_add_seconds (4, dcb_carrier_timeout, device);
+			priv->dcb_timeout_id = g_timeout_add_seconds (10, dcb_carrier_timeout, device);
 		}
 
 		priv->dcb_handle_carrier_changes = TRUE;
