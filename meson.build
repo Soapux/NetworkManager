@@ -713,6 +713,9 @@ config_h.set10('_NM_CC_SUPPORT_AUTO_TYPE', cc.compiles(auto_support_src))
 # Vala bindings
 enable_vapi = get_option('vapi')
 if enable_vapi
+  if not enable_introspection
+    error('Vala bindings require GObject introspection')
+  endif
   vala_req_version = '>= 0.17.1.24'
   assert(add_languages('vala', required: false), 'vala is required to build. Use -Dvapi=false to disable it')
   assert(meson.get_compiler('vala').version().version_compare(vala_req_version), 'vala ' + vala_req_version + ' is required to build. Use -Dvapi=false to disable it')
